@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>🔐 重点项目手机助手 · 高新区2026</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f5f7fb; min-height: 100vh; display: flex; justify-content: center; padding: 10px; }
+        #app { max-width: 600px; width: 100%; background: white; border-radius: 32px 32px 0 0; box-shadow: 0 0 30px rgba(0,0,0,0.05); padding: 20px 16px 30px; position: relative; }
+
+        /* 密码锁层 */
+        #lockScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.98); backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center; z-index: 1000;
+            transition: 0.3s;
+        }
+        .lock-box {
+            background: white; width: 280px; padding: 32px 24px; border-radius: 48px;
+            box-shadow: 0 20px 40px rgba(0,20,50,0.2); text-align: center;
+            border: 1px solid #d0dded;
+        }
+        .lock-box i { font-size: 3rem; color: #1a5bbf; margin-bottom: 16px; }
+        .lock-box input {
+            width: 100%; padding: 16px; border: 1px solid #cbd5e1; border-radius: 60px;
+            font-size: 1.2rem; text-align: center; letter-spacing: 4px; margin: 16px 0 10px;
+            outline: none;
+        }
+        .lock-btn {
+            background: #1a5bbf; color: white; border: none; border-radius: 60px;
+            padding: 14px; font-size: 1.1rem; width: 100%; font-weight: 600;
+        }
+        .lock-error { color: #c03; font-size: 0.9rem; margin-top: 12px; }
+
+        /* 管理员图标 */
+        .admin-lock {
+            position: absolute; top: 20px; right: 20px; background: #eef3fc;
+            width: 44px; height: 44px; border-radius: 30px; display: flex;
+            align-items: center; justify-content: center; font-size: 1.4rem;
+            color: #1f2a41; cursor: pointer; z-index: 200;
+        }
+        /* 管理员面板 */
+        .admin-panel {
+            background: #f0f5ff; border-radius: 28px; padding: 16px; margin: 10px 0 20px;
+            border: 1px solid #ccdbf2; display: none;
+        }
+        .admin-panel .btn { margin: 5px; flex: 1; }
+
+        h1 { font-size: 1.8rem; font-weight: 600; color: #0b2b4a; display: flex; align-items: center; gap: 8px; margin-top: 0; }
+        .subhead { color: #4e5b6e; font-size: 0.95rem; border-bottom: 1px solid #e9edf4; padding-bottom: 16px; margin-bottom: 18px; display: flex; justify-content: space-between; }
+        .badge { background: #eef3fc; color: #1e5ba6; padding: 6px 12px; border-radius: 40px; font-size: 0.8rem; }
+
+        .search-box { background: #f0f3f9; border-radius: 30px; padding: 4px 16px; display: flex; align-items: center; margin: 16px 0 18px; border: 1px solid #dde3ed; }
+        .search-box i { color: #7a8a9f; }
+        .search-box input { border: none; background: transparent; padding: 14px 10px; width: 100%; outline: none; }
+
+        .project-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 30px; }
+        .project-card { background: white; border-radius: 24px; padding: 18px 16px; border: 1px solid #e2e8f2; box-shadow: 0 4px 10px rgba(0,0,0,0.02); cursor: pointer; }
+        .card-title { font-weight: 650; font-size: 1.18rem; color: #0b2b4a; }
+        .card-meta { display: flex; flex-wrap: wrap; gap: 12px 20px; font-size: 0.9rem; color: #3e4f64; }
+        .card-meta span { display: flex; align-items: center; gap: 5px; }
+        .status-tag { background: #e5f2e8; color: #1b7340; padding: 4px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 600; display: inline-block; }
+
+        .detail-view .detail-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+        .back-btn { background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #1a5bbf; }
+        .detail-form { display: flex; flex-direction: column; gap: 18px; max-height: 65vh; overflow-y: auto; margin-bottom: 25px; }
+        .field-row { display: flex; flex-direction: column; gap: 4px; }
+        .field-label { font-size: 0.85rem; font-weight: 600; color: #4b5d73; }
+        .field-value { background: #f4f7fd; border-radius: 16px; padding: 12px 16px; border: 1px solid #dce3ef; outline: none; width: 100%; font-family: inherit; }
+
+        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { background: white; border: 1px solid #cfd9e6; border-radius: 60px; padding: 12px 18px; font-size: 1rem; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; justify-content: center; flex: 1; }
+        .btn-primary { background: #1a5bbf; border-color: #1a5bbf; color: white; }
+        .btn-danger { background: #fff2f0; border-color: #ffb8b8; color: #b33e3e; }
+
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1f2a41; color: white; padding: 12px 24px; border-radius: 60px; display: none; z-index: 2000; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- 密码锁屏 -->
+    <div id="lockScreen">
+        <div class="lock-box">
+            <i class="fas fa-lock"></i>
+            <h3>检索密码</h3>
+            <input type="password" id="retrievePwd" placeholder="******" maxlength="6" inputmode="numeric">
+            <button class="lock-btn" id="unlockBtn">解锁</button>
+            <div id="lockError" class="lock-error"></div>
+        </div>
+    </div>
+
+    <!-- 管理员图标（始终可见） -->
+    <div class="admin-lock" id="adminLockBtn"><i class="fas fa-key"></i></div>
+
+    <!-- 主内容 (初始隐藏) -->
+    <div id="mainContent" style="display: none;">
+        <h1><i class="fas fa-rocket"></i> 高新区·重点项目</h1>
+        <div class="subhead">
+            <span class="badge" id="projectCount">0 个项目</span>
+            <span><i class="fas fa-phone-alt"></i> 手机版</span>
+        </div>
+
+        <!-- 管理员面板 (默认隐藏) -->
+        <div id="adminPanel" class="admin-panel">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <div class="btn file-upload" style="flex:1;">
+                    <i class="fas fa-upload"></i> 上传Excel
+                    <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="opacity:0; position:absolute; left:0; top:0; width:100%; height:100%; cursor:pointer;">
+                </div>
+                <button class="btn" id="exportHtmlBtn"><i class="fas fa-download"></i> 导出HTML</button>
+                <button class="btn" id="clearDataBtn"><i class="fas fa-trash-alt"></i> 重置</button>
+            </div>
+            <p style="font-size:0.8rem; margin-top:10px; color:#2f4b7c;"><i class="fas fa-info-circle"></i> 导出HTML文件已内嵌数据，可直接分享</p>
+        </div>
+
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="搜索项目名称...">
+        </div>
+
+        <!-- 列表视图 -->
+        <div id="listView">
+            <div id="projectListContainer" class="project-list"></div>
+        </div>
+
+        <!-- 详情视图 (初始隐藏) -->
+        <div id="detailView" class="detail-view" style="display: none;">
+            <div class="detail-header">
+                <button class="back-btn" id="backToList"><i class="fas fa-arrow-left"></i></button>
+                <h2 style="font-size:1.5rem;" id="detailTitle">项目详情</h2>
+            </div>
+            <div id="detailFormContainer" class="detail-form"></div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="saveProjectBtn"><i class="fas fa-save"></i> 保存</button>
+                <button class="btn btn-danger" id="deleteProjectBtn"><i class="fas fa-trash"></i> 删除</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">✔️ 操作成功</div>
+</div>
+
+<script>
+(function() {
+    // ---------- 字段定义 (与Excel列对应) ----------
+    const FIELDS = [
+        "项目名称","项目分类","行业分类","行业类型","是否结转项目","主要建设内容及规模",
+        "计划开竣工日期","总投资(万元)","政府投资","自筹","国内贷款需求总额","其他",
+        "国内贷款当年需求","是否为中央投资项目","年度投资目标(万元)","年度形象进度目标",
+        "开工以来累计完成投资","截止当前工程形象进度或前期工作进度","审批(核准、备案)情况",
+        "项目选址意见书","用地规划许可","工程规划许可","环评审批情况","建设工程文物保护和考古许可",
+        "能评手续办理情况","用地预审审批情况","用地审批情况","施工许可","总征地数(亩)",
+        "已征地数(亩)","当年需征地数(亩)","项目年综合能源消费量(吨标准煤)","重点产业集群",
+        "重点产业链","项目业主","所在区县","管理单位（市/省直单位）","管理单位（县（区）/市直单位）",
+        "责任单位","负责人姓名","负责人手机","信息员姓名","固定电话","信息员手机","所在战略区",
+        "审核监管平台代码","统一社会信用代码","是否争资项目","是否2026年省重点项目",
+        "是否2026年“三十工程”项目","分类","备注"
+    ];
+
+    // ---------- 全局变量 ----------
+    let projects = [];                     // 项目数组，每个对象包含所有字段 + id
+    let currentProjectId = null;
+    let searchTerm = '';
+    const STORAGE_KEY = 'GaoxinProjects_2026';
+    const RETRIEVE_PWD = '123456';
+    const ADMIN_PWD = '654321';
+    let isAdmin = false;                   // 管理员状态
+
+    // ---------- 初始化：先检查是否有内嵌数据 (用于导出的HTML) ----------
+    (function() {
+        // 如果存在全局变量 embeddedProjects (由导出HTML注入)，则使用它并保存到localStorage
+        if (typeof embeddedProjects !== 'undefined' && Array.isArray(embeddedProjects) && embeddedProjects.length) {
+            projects = embeddedProjects.map(p => ({ ...p, id: p.id || 'emb_' + Date.now() + Math.random() }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+        } else {
+            // 否则从localStorage加载
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try { projects = JSON.parse(stored).map(p => ({ ...p, id: p.id || 'p_' + Date.now() + Math.random() })); }
+                catch { projects = []; }
+            } else { projects = []; }
+        }
+    })();
+
+    // ---------- 密码锁 ----------
+    const lockScreen = document.getElementById('lockScreen');
+    const mainContent = document.getElementById('mainContent');
+    const unlockBtn = document.getElementById('unlockBtn');
+    const retrievePwd = document.getElementById('retrievePwd');
+    const lockError = document.getElementById('lockError');
+
+    unlockBtn.addEventListener('click', function() {
+        if (retrievePwd.value === RETRIEVE_PWD) {
+            lockScreen.style.display = 'none';
+            mainContent.style.display = 'block';
+            renderList();
+        } else {
+            lockError.textContent = '密码错误';
+        }
+    });
+
+    // 回车解锁
+    retrievePwd.addEventListener('keypress', (e) => { if (e.key === 'Enter') unlockBtn.click(); });
+
+    // ---------- 管理员登录 ----------
+    const adminLockBtn = document.getElementById('adminLockBtn');
+    const adminPanel = document.getElementById('adminPanel');
+
+    adminLockBtn.addEventListener('click', function() {
+        const pwd = prompt('请输入管理员密码：');
+        if (pwd === ADMIN_PWD) {
+            isAdmin = true;
+            adminPanel.style.display = 'block';
+            toast('管理员模式已开启');
+        } else if (pwd !== null) {
+            alert('密码错误');
+        }
+    });
+
+    // ---------- 工具函数 ----------
+    function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 2000);
+    }
+
+    function saveToStorage() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+        updateCountBadge();
+    }
+
+    function updateCountBadge() {
+        document.getElementById('projectCount').innerText = projects.length + ' 个项目';
+    }
+
+    function escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return String(unsafe).replace(/[&<>"]/g, m => {
+            if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; if (m === '"') return '&quot;';
+            return m;
+        });
+    }
+
+    // ---------- 列表渲染 ----------
+    function renderList() {
+        const container = document.getElementById('projectListContainer');
+        const term = document.getElementById('searchInput').value.trim().toLowerCase();
+        const filtered = projects.filter(p => (p['项目名称'] || '').toLowerCase().includes(term));
+
+        if (!filtered.length) {
+            container.innerHTML = `<div class="empty-state"><i class="fas fa-folder-open" style="font-size:2.5rem; opacity:0.4;"></i><p>暂无项目</p></div>`;
+            return;
+        }
+
+        let html = '';
+        filtered.forEach(proj => {
+            html += `
+                <div class="project-card" data-id="${escapeHtml(proj.id)}">
+                    <div class="card-title">${escapeHtml(proj['项目名称'] || '未命名')}</div>
+                    <div class="card-meta">
+                        <span><i class="fas fa-tag"></i> ${escapeHtml(proj['项目分类'] || '')}</span>
+                        <span><i class="fas fa-industry"></i> ${escapeHtml(proj['行业类型'] || '')}</span>
+                        <span><i class="fas fa-calendar"></i> ${escapeHtml(proj['计划开竣工日期'] || '')}</span>
+                        <span><i class="fas fa-coins"></i> ${escapeHtml(proj['总投资(万元)'] || '')} 万元</span>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+
+        document.querySelectorAll('.project-card').forEach(card => {
+            card.addEventListener('click', () => showDetailView(card.dataset.id));
+        });
+    }
+
+    // 搜索监听
+    document.getElementById('searchInput').addEventListener('input', renderList);
+
+    // ---------- 详情视图 ----------
+    function showDetailView(id) {
+        const project = projects.find(p => p.id === id);
+        if (!project) return;
+        currentProjectId = id;
+
+        const container = document.getElementById('detailFormContainer');
+        let fieldsHtml = '';
+        FIELDS.forEach(field => {
+            const val = project[field] || '';
+            fieldsHtml += `
+                <div class="field-row">
+                    <span class="field-label">${escapeHtml(field)}</span>
+                    <input class="field-value" type="text" data-field="${field}" value="${escapeHtml(val)}">
+                </div>
+            `;
+        });
+        container.innerHTML = fieldsHtml;
+        document.getElementById('detailTitle').innerText = project['项目名称'] || '编辑项目';
+        document.getElementById('listView').style.display = 'none';
+        document.getElementById('detailView').style.display = 'block';
+    }
+
+    function backToList() {
+        document.getElementById('detailView').style.display = 'none';
+        document.getElementById('listView').style.display = 'block';
+        currentProjectId = null;
+        renderList();
+    }
+    document.getElementById('backToList').addEventListener('click', backToList);
+
+    // 保存修改
+    document.getElementById('saveProjectBtn').addEventListener('click', function() {
+        if (!currentProjectId) return;
+        const project = projects.find(p => p.id === currentProjectId);
+        if (!project) return;
+
+        document.querySelectorAll('#detailFormContainer .field-value').forEach(inp => {
+            const field = inp.dataset.field;
+            if (field) project[field] = inp.value;
+        });
+        saveToStorage();
+        toast('已保存');
+        document.getElementById('detailTitle').innerText = project['项目名称'] || '编辑项目';
+        renderList(); // 列表更新
+    });
+
+    // 删除项目
+    document.getElementById('deleteProjectBtn').addEventListener('click', function() {
+        if (!currentProjectId || !confirm('删除该项目？')) return;
+        projects = projects.filter(p => p.id !== currentProjectId);
+        saveToStorage();
+        toast('已删除');
+        backToList();
+    });
+
+    // ---------- 管理员功能 ----------
+    // 上传Excel
+    document.getElementById('excelUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const data = new Uint8Array(ev.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+            // 自动检测起始行
+            let startRow = 0, hasIndex = false;
+            for (let i=0; i<Math.min(rows.length,15); i++) {
+                const r = rows[i];
+                if (!r || !r.length) continue;
+                const first = String(r[0] || '').trim();
+                if (first && !isNaN(parseFloat(first)) && isFinite(first) && !first.startsWith('序号')) {
+                    startRow = i; hasIndex = true; break;
+                }
+                if (first && isNaN(parseFloat(first)) && first.length>1) {
+                    startRow = i; hasIndex = false; break;
+                }
+            }
+
+            const newProjects = [];
+            for (let r = startRow; r < rows.length; r++) {
+                const row = rows[r];
+                if (!row || row.every(c=>c===undefined||c==='')) continue;
+                const base = hasIndex ? 1 : 0;
+                const proj = { id: 'imp_' + Date.now() + r + Math.random() };
+                FIELDS.forEach((f, idx) => {
+                    let val = row[base + idx] !== undefined ? row[base + idx] : '';
+                    if (typeof val === 'number') val = val.toString();
+                    proj[f] = val;
+                });
+                if (proj['项目名称'] && String(proj['项目名称']).trim() !== '') newProjects.push(proj);
+            }
+
+            if (newProjects.length) {
+                projects = newProjects;
+                saveToStorage();
+                renderList();
+                toast(`导入 ${newProjects.length} 个项目`);
+            } else toast('未解析到有效项目');
+        };
+        reader.readAsArrayBuffer(file);
+        e.target.value = '';
+    });
+
+    // 重置数据
+    document.getElementById('clearDataBtn').addEventListener('click', function() {
+        if (confirm('⚠️ 清空所有本地项目？不可撤销。')) {
+            projects = [];
+            saveToStorage();
+            renderList();
+            toast('已清空');
+        }
+    });
+
+    // 导出HTML（内嵌数据）
+    document.getElementById('exportHtmlBtn').addEventListener('click', function() {
+        // 生成当前HTML的副本，并将projects数据嵌入为 embeddedProjects
+        const currentHTML = document.documentElement.outerHTML;
+        // 将projects序列化为JSON字符串，并转义
+        const jsonStr = JSON.stringify(projects.map(p => { const {id, ...rest} = p; return rest; })); // 去掉id避免冲突
+        // 构建内嵌脚本：在第一个script之前插入  var embeddedProjects = ...
+        const embedScript = `<script>var embeddedProjects = ${jsonStr};<\/script>`;
+        // 将嵌入脚本插入到<head>后面或合适位置，简单替换 </head> 前
+        let newHTML = currentHTML.replace('</head>', embedScript + '</head>');
+        // 创建下载
+        const blob = new Blob([newHTML], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '重点项目_高新区_含数据.html';
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('导出成功，文件已内嵌当前数据');
+    });
+
+    // 新建项目 (普通用户也可新建，但只有管理员能看到面板？实际上用户也可以建，但我们需要在列表加按钮)
+    // 简单在列表上方加个按钮（普通用户可见？根据需求，检索后应能编辑。我们加一个“+”按钮在搜索栏旁边？）
+    // 为了简洁，在搜索框上方加一个浮动新建按钮（对所有已解锁用户可见）
+    const newBtn = document.createElement('button');
+    newBtn.className = 'btn btn-sm';
+    newBtn.innerHTML = '<i class="fas fa-plus"></i> 新建';
+    newBtn.style.margin = '0 0 10px 0';
+    newBtn.style.width = '100%';
+    newBtn.addEventListener('click', function() {
+        const newId = 'new_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+        const newProj = { id: newId };
+        FIELDS.forEach(f => newProj[f] = '');
+        newProj['项目名称'] = '新项目 ' + (projects.length+1);
+        projects.push(newProj);
+        saveToStorage();
+        showDetailView(newId);
+        toast('新建项目');
+    });
+    document.querySelector('.search-box').before(newBtn);
+
+    // 初始化列表
+    updateCountBadge();
+    renderList();
+
+    // 如果已经通过密码，但内嵌数据已加载，直接显示主界面
+    // 密码锁尚未解开，无需处理
+
+})();
+</script>
+<!-- 注：导出时会在此处嵌入数据 -->
+</body>
+</html>
